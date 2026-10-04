@@ -40,6 +40,15 @@ npx tsc --noEmit; npx eslint src; npx next build
 4. Criar a loja e o dono: `FIREBASE_SERVICE_ACCOUNT_JSON=… CRIAR_LOJA_SENHA=… node scripts/criar-loja.mjs --loja "…" --nome "…" --email …`. Não existe cadastro público; os vendedores o dono cadastra em Configurações.
 5. Logo da loja: link do **Cloudinary** (`https://res.cloudinary.com/…`) ou do Firebase Storage, PNG/JPG até 500 KB. Outros endereços são recusados de propósito (o servidor busca esse arquivo ao gerar o PDF).
 
+## Produção (já publicada)
+
+- Site: https://loja-eletrica-admin.vercel.app (Vercel, projeto `loja-eletrica-admin`, deploy automático a cada push na `main`).
+- Firebase: projeto `loja-eletrica-orcamentos` (Firestore em São Paulo, plano Spark). Login por e-mail e senha; cadastro público desligado.
+- Variáveis na Vercel (Production): `NEXT_PUBLIC_FIREBASE_*` (Config), `PDF_LINK_SECRET` e `FIREBASE_SERVICE_ACCOUNT_JSON` (Secret).
+  Ao recadastrar a chave de serviço, envie o **arquivo cru** (`cmd /c "vercel env add FIREBASE_SERVICE_ACCOUNT_JSON production --sensitive < chave.json"`). Pelo pipe do PowerShell o texto é recodificado e o servidor passa a recusar tudo.
+- **Não remover** o `engines.node = 24.x` nem o `overrides.jose = 4.15.9` do `package.json`: o `firebase-admin` puxa o `jwks-rsa` 4, que exige o `jose` 6 (só ESM) e quebra na Vercel com `ERR_REQUIRE_ESM`. Antes de tirar o override, teste com um token real em produção.
+- Criar usuário dono de uma loja: `node scripts/criar-loja.mjs --loja "…" --nome "…" --email …` (reaproveita um usuário já criado no console do Firebase).
+
 ## Decisões que dependem do dono da loja
 
 - **Vender sem estoque:** hoje bloqueia (`permiteVendaSemEstoque: false`). Dá para liberar em Configurações; o saldo fica negativo e aparece em destaque.
