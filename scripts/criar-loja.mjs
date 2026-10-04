@@ -21,23 +21,36 @@ const { values: a } = parseArgs({
   },
 });
 a.senha ??= process.env.CRIAR_LOJA_SENHA;
-for (const k of ["loja", "nome", "email", "senha"]) {
+for (const k of ["loja", "nome", "email"]) {
   if (!a[k]) {
     console.error(`Falta --${k}`);
     process.exit(1);
   }
-}
-if (a.senha.length < 8) {
-  console.error("A senha precisa de pelo menos 8 caracteres");
-  process.exit(1);
 }
 
 const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 initializeApp(json ? { credential: cert(JSON.parse(json)) } : { projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID });
 const db = getFirestore();
 
+// Usuário já criado no console do Firebase (Authentication): reaproveita, sem mexer na senha.
+// Usuário novo: precisa de senha (8+ caracteres).
+let uid;
+try {
+  uid = (await getAuth().getUserByEmail(a.email)).uid;
+  if ((await db.doc(`usuarios/${uid}`).get()).exists) {
+    console.error(`${a.email} já está ligado a uma loja. Nada foi alterado.`);
+    process.exit(1);
+  }
+  console.log(`Usuário ${a.email} já existe no login; só vou ligá-lo à loja.`);
+} catch (e) {
+  if (e.code !== "auth/user-not-found") throw e;
+  if (!a.senha || a.senha.length < 8) {
+    console.error("Usuário novo precisa de senha com pelo menos 8 caracteres (CRIAR_LOJA_SENHA ou --senha).");
+    process.exit(1);
+  }
+  uid = (await getAuth().createUser({ email: a.email, password: a.senha, displayName: a.nome })).uid;
+}
 const lojaRef = db.collection("lojas").doc();
-const { uid } = await getAuth().createUser({ email: a.email, password: a.senha, displayName: a.nome });
 await lojaRef.set({
   nome: a.loja,
   validadePadraoDias: 15,
