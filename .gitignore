@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# exemplo de env pode ser commitado
+!.env.example
+
+# logs dos emuladores do Firebase
+*-debug.log

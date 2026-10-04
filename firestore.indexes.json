@@ -1,0 +1,41 @@
+{
+  "indexes": [
+    { "collectionGroup": "produtos", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "nome", "order": "ASCENDING" } ] },
+    { "collectionGroup": "produtos", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "ativo", "order": "ASCENDING" },
+      { "fieldPath": "nome", "order": "ASCENDING" } ] },
+    { "collectionGroup": "produtos", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "abaixoDoMinimo", "order": "ASCENDING" },
+      { "fieldPath": "nome", "order": "ASCENDING" } ] },
+    { "collectionGroup": "clientes", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "nome", "order": "ASCENDING" } ] },
+    { "collectionGroup": "orcamentos", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "criadoEm", "order": "DESCENDING" } ] },
+    { "collectionGroup": "orcamentos", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "status", "order": "ASCENDING" },
+      { "fieldPath": "criadoEm", "order": "DESCENDING" } ] },
+    { "collectionGroup": "orcamentos", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "clienteId", "order": "ASCENDING" },
+      { "fieldPath": "criadoEm", "order": "DESCENDING" } ] },
+    { "collectionGroup": "vendas", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "criadoEm", "order": "DESCENDING" } ] },
+    { "collectionGroup": "vendas", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "clienteId", "order": "ASCENDING" },
+      { "fieldPath": "criadoEm", "order": "DESCENDING" } ] },
+    { "collectionGroup": "movimentacoes", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "lojaId", "order": "ASCENDING" },
+      { "fieldPath": "produtoId", "order": "ASCENDING" },
+      { "fieldPath": "criadoEm", "order": "DESCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}

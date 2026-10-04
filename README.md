@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Orçamentos e Estoque — loja de elétrica
 
-## Getting Started
+Web app (PWA) para montar orçamentos, converter em venda e controlar estoque.
+Fluxo: **orçamento → venda → baixa de estoque**. Especificação: `MVP — Sistema de Orçamentos e Estoque para Loja de Elétrica.md`.
 
-First, run the development server:
+Stack: Next.js 16 (App Router) · React 19 · TypeScript strict · Tailwind 4 · Firebase (Auth + Firestore) · `firebase-admin` nas rotas `/api` · `@react-pdf/renderer`. Visual baseado no Dash UI (Figma).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Como o dinheiro e o estoque são protegidos
+
+- Valores em **centavos** e quantidades em **milésimos** (inteiros). `src/lib/calc.ts`.
+- O navegador **só lê** o Firestore e só escreve `clientes` e os dados da loja. Produtos, estoque, orçamentos, vendas, movimentações e usuários são escritos **só pelo servidor** (`src/lib/server/*`, rotas `src/app/api/*`), em transação. Regras em `firestore.rules`.
+- Toda rota `/api` confere o token (`firebase-admin`), o usuário ativo e o perfil (dono/vendedor) antes de agir (`src/lib/server/http.ts`).
+
+## Rodar local (com emuladores, sem tocar em produção)
+
+```powershell
+npm install
+firebase emulators:start --only firestore,auth --project demo-loja   # terminal 1
+# terminal 2 (com FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 e FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 definidos):
+node scripts/criar-loja.mjs --loja "Elétrica Teste" --nome "Dono" --email dono@teste.com --senha "senha12345" --demo
+npm run dev                                                          # usa .env.local (emulador)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Testes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+npm test          # unidade: cálculo, importação, WhatsApp
+npm run test:emu  # emulador: regras de negócio, concorrência, permissões, regras do Firestore
+npx tsc --noEmit; npx eslint src; npx next build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`docs/QA-PLAN.md` tem o plano de QA e a evidência dos testes por HTTP (feitos pelo agente de QA da Fábrica), com o status das correções no final.
 
-## Learn More
+## Publicar (Vercel + Firebase)
 
-To learn more about Next.js, take a look at the following resources:
+1. Criar o projeto Firebase (Auth por e-mail/senha ligado, Firestore) e o repositório Git do app. Esta pasta é um repositório próprio.
+2. Variáveis na Vercel — `NEXT_PUBLIC_FIREBASE_*` como **Config**; `FIREBASE_SERVICE_ACCOUNT_JSON` e `PDF_LINK_SECRET` (32+ caracteres aleatórios) como **Secret**.
+   **Nunca** cadastrar `NEXT_PUBLIC_USE_EMULATOR`, `FIRESTORE_EMULATOR_HOST` ou `FIREBASE_AUTH_EMULATOR_HOST` (o login passaria a aceitar token falso).
+3. `firebase deploy --only firestore:rules,firestore:indexes` (projeto novo não tem nada publicado).
+4. Criar a loja e o dono: `FIREBASE_SERVICE_ACCOUNT_JSON=… CRIAR_LOJA_SENHA=… node scripts/criar-loja.mjs --loja "…" --nome "…" --email …`. Não existe cadastro público; os vendedores o dono cadastra em Configurações.
+5. Logo da loja: link do **Cloudinary** (`https://res.cloudinary.com/…`) ou do Firebase Storage, PNG/JPG até 500 KB. Outros endereços são recusados de propósito (o servidor busca esse arquivo ao gerar o PDF).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Decisões que dependem do dono da loja
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Vender sem estoque:** hoje bloqueia (`permiteVendaSemEstoque: false`). Dá para liberar em Configurações; o saldo fica negativo e aparece em destaque.
+- **Limite de desconto do vendedor:** 10% **do total do orçamento** (não por item). Confirmar se é isso.
+- **Orçamento aprovado também vence** (não converte depois da validade, para não vender com preço antigo). Duplicar renova com os preços de hoje.
+- **Só o dono** cadastra produto, movimenta estoque e cancela venda (spec, regra 9).
+- Formas de pagamento mostradas no orçamento, validade padrão (hoje 15 dias) e se precisa nota fiscal: perguntas do MD ainda abertas.
 
-## Deploy on Vercel
+## Limites conhecidos
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Busca de produto/cliente carrega até 3000 registros e filtra no navegador. Passou disso, trocar por busca no servidor.
+- Importação lê **CSV** (no Excel: Salvar como → CSV), até 100 linhas por envio (a tela divide sozinha). Quantidade com ponto e sem vírgula ("1.500") é recusada por ser ambígua.
+- Link de PDF vale 7 dias e deixa de valer se o orçamento for editado ou recusado.
+- Não há envio automático de WhatsApp (API oficial): a tela abre o `wa.me` com o texto e o link do PDF.
+- Falta testar em aparelho real (Android, internet lenta, PWA instalada) e rodar Lighthouse em produção.

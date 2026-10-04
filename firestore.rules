@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Nega tudo por padrão. O cliente LÊ tudo da própria loja, mas só ESCREVE
+    // clientes e os dados da loja. Produtos, estoque, orçamentos, vendas,
+    // movimentações e usuários são escritos só pelo servidor (/api, firebase-admin).
+
+    function me() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function logado() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && me().ativo == true;
+    }
+    function daLoja(lojaId) { return logado() && me().lojaId == lojaId; }
+    function dono(lojaId) { return daLoja(lojaId) && me().perfil == 'dono'; }
+
+    match /usuarios/{uid} {
+      allow read: if logado()
+        && resource.data.lojaId == me().lojaId
+        && (uid == request.auth.uid || me().perfil == 'dono');
+    }
+
+    match /lojas/{lojaId} {
+      allow read: if daLoja(lojaId);
+      // dono edita dados da loja, mas não os contadores; tipos e logo validados aqui
+      // porque o servidor confia nesses campos (o logo é buscado pelo servidor ao gerar o PDF)
+      allow update: if dono(lojaId)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['ultimoNumeroOrcamento', 'ultimoNumeroVenda'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 120
+        && request.resource.data.validadePadraoDias is int
+        && request.resource.data.validadePadraoDias >= 1 && request.resource.data.validadePadraoDias <= 365
+        && request.resource.data.descontoMaxVendedorPct is number
+        && request.resource.data.descontoMaxVendedorPct >= 0 && request.resource.data.descontoMaxVendedorPct <= 100
+        && request.resource.data.permiteVendaSemEstoque is bool
+        && (!('logoUrl' in request.resource.data)
+            || request.resource.data.logoUrl == ''
+            || request.resource.data.logoUrl.matches('^https://(res[.]cloudinary[.]com|firebasestorage[.]googleapis[.]com)/.{1,400}$'));
+    }
+
+    function clienteValido(c) {
+      return c.keys().hasOnly(['lojaId', 'nome', 'telefone', 'cpfCnpj', 'endereco', 'observacoes', 'criadoEm'])
+        && c.nome is string && c.nome.size() > 0 && c.nome.size() <= 120
+        && c.get('telefone', '').size() <= 30
+        && c.get('cpfCnpj', '').size() <= 20
+        && c.get('endereco', '').size() <= 200
+        && c.get('observacoes', '').size() <= 500;
+    }
+
+    match /clientes/{id} {
+      allow read: if daLoja(resource.data.lojaId);
+      allow create: if daLoja(request.resource.data.lojaId) && clienteValido(request.resource.data);
+      allow update: if daLoja(resource.data.lojaId)
+        && request.resource.data.lojaId == resource.data.lojaId
+        && clienteValido(request.resource.data);
+    }
+
+    match /produtos/{id} {
+      allow read: if daLoja(resource.data.lojaId);
+    }
+
+    match /orcamentos/{id} {
+      allow read: if daLoja(resource.data.lojaId);
+      match /itens/{itemId} {
+        allow read: if daLoja(get(/databases/$(database)/documents/orcamentos/$(id)).data.lojaId);
+      }
+    }
+
+    match /vendas/{id} {
+      allow read: if daLoja(resource.data.lojaId);
+      match /itens/{itemId} {
+        allow read: if daLoja(get(/databases/$(database)/documents/vendas/$(id)).data.lojaId);
+      }
+    }
+
+    match /movimentacoes/{id} {
+      allow read: if daLoja(resource.data.lojaId);
+    }
+  }
+}
