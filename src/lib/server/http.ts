@@ -23,8 +23,11 @@ export async function requireUser(req: Request, soDono = false): Promise<Ctx> {
   let uid: string;
   try {
     uid = (await adminAuth().verifyIdToken(token)).uid;
-  } catch {
-    throw new ApiError(401, "Sessão inválida");
+  } catch (e) {
+    // token ruim/vencido: o Firebase devolve código "auth/..." -> 401.
+    // Qualquer outra falha (credencial do servidor, rede) é problema nosso: 500 com log, não "sessão inválida".
+    if (String((e as { code?: unknown }).code ?? "").startsWith("auth/")) throw new ApiError(401, "Sessão inválida");
+    throw e;
   }
   const snap = await adminDb().doc(`usuarios/${uid}`).get();
   const u = snap.data() as Doc<Usuario> | undefined;
