@@ -49,6 +49,13 @@ describe("loja", () => {
     await assertFails(updateDoc(doc(dono(), "lojas/L1"), { logoUrl: "data:image/svg+xml;base64,AAAA" }));
   });
 
+  test("logo do menu: só data URL png/jpeg até 250 KB", async () => {
+    await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { logoMenuUrl: "data:image/png;base64," + "A".repeat(100000) }));
+    await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { logoMenuUrl: "" }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { logoMenuUrl: "data:image/png;base64," + "A".repeat(250000) }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { logoMenuUrl: "https://res.cloudinary.com/x/y.png" }));
+  });
+
   test("marca d'água: só data URL png/jpeg até 250 KB", async () => {
     await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "data:image/png;base64," + "A".repeat(100000) }));
     await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "" }));

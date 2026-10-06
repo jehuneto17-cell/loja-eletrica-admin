@@ -15,6 +15,7 @@ export interface Loja {
   telefone?: string;
   endereco?: string;
   logoUrl?: string;
+  logoMenuUrl?: string; // logo do menu do app (recortada); o PDF usa logoUrl
   marcaDaguaUrl?: string; // escudo/símbolo em transparência no fundo do PDF (data URL png/jpeg)
   validadePadraoDias: number;
   textoRodapePdf?: string;

@@ -42,6 +42,10 @@ service cloud.firestore {
             || request.resource.data.logoUrl.matches('^https://(res[.]cloudinary[.]com|firebasestorage[.]googleapis[.]com)/.{1,400}$')
             || (request.resource.data.logoUrl.matches('^data:image/(png|jpeg);base64,.+$')
                 && request.resource.data.logoUrl.size() <= 250000))
+        && (!('logoMenuUrl' in request.resource.data)
+            || request.resource.data.logoMenuUrl == ''
+            || (request.resource.data.logoMenuUrl.matches('^data:image/(png|jpeg);base64,.+$')
+                && request.resource.data.logoMenuUrl.size() <= 250000))
         && (!('marcaDaguaUrl' in request.resource.data)
             || request.resource.data.marcaDaguaUrl == ''
             || (request.resource.data.marcaDaguaUrl.matches('^data:image/(png|jpeg);base64,.+$')

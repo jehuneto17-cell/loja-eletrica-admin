@@ -18,6 +18,7 @@ export default function FormLoja() {
     telefone: loja.telefone ?? "",
     endereco: loja.endereco ?? "",
     logoUrl: loja.logoUrl ?? "",
+    logoMenuUrl: loja.logoMenuUrl ?? "",
     marcaDaguaUrl: loja.marcaDaguaUrl ?? "",
     textoRodapePdf: loja.textoRodapePdf ?? "",
     validade: String(loja.validadePadraoDias),
@@ -28,9 +29,9 @@ export default function FormLoja() {
   const [enviando, setEnviando] = useState(false);
   const set = (k: keyof typeof f, v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
 
-  // Corta a margem vazia (transparente ou branca), reduz para no máximo 500 px e guarda dentro da loja
-  // (PNG; JPG se ficar pesado).
-  async function escolherImagem(campo: "logoUrl" | "marcaDaguaUrl", file?: File) {
+  // Reduz para no máximo 500 px e guarda dentro da loja (PNG; JPG se ficar pesado).
+  // Só a logo do menu tem a margem vazia (transparente ou branca) cortada; o PDF usa a imagem como veio.
+  async function escolherImagem(campo: "logoUrl" | "logoMenuUrl" | "marcaDaguaUrl", file?: File) {
     if (!file) return;
     try {
       const img = await createImageBitmap(file);
@@ -40,7 +41,8 @@ export default function FormLoja() {
       grande.height = Math.round(img.height * k0);
       const g0 = grande.getContext("2d", { willReadFrequently: true })!;
       g0.drawImage(img, 0, 0, grande.width, grande.height);
-      const { x, y, w, h } = limitesDoDesenho(g0.getImageData(0, 0, grande.width, grande.height));
+      const { x, y, w, h } =
+        campo === "logoMenuUrl" ? limitesDoDesenho(g0.getImageData(0, 0, grande.width, grande.height)) : { x: 0, y: 0, w: grande.width, h: grande.height };
 
       const k = Math.min(1, 500 / Math.max(w, h));
       const c = document.createElement("canvas");
@@ -79,6 +81,7 @@ export default function FormLoja() {
         telefone: f.telefone.trim(),
         endereco: f.endereco.trim(),
         logoUrl: f.logoUrl.trim(),
+        logoMenuUrl: f.logoMenuUrl,
         marcaDaguaUrl: f.marcaDaguaUrl,
         textoRodapePdf: f.textoRodapePdf.trim(),
         validadePadraoDias: validade,
@@ -101,7 +104,10 @@ export default function FormLoja() {
         <Campo rotulo="CNPJ"><input value={f.cnpj} onChange={(e) => set("cnpj", e.target.value)} maxLength={20} className={inputCls} /></Campo>
         <Campo rotulo="Telefone"><input value={f.telefone} onChange={(e) => set("telefone", e.target.value)} maxLength={30} className={inputCls} /></Campo>
         <Campo rotulo="Endereço"><input value={f.endereco} onChange={(e) => set("endereco", e.target.value)} maxLength={200} className={inputCls} /></Campo>
-        <Campo rotulo="Logo da loja" dica="Logo completa. Aparece no topo do PDF do orçamento; é reduzida automaticamente." className="sm:col-span-2">
+        <Campo rotulo="Logo do menu do app" dica="Aparece no topo do menu e no celular. A margem vazia é cortada para a logo ficar maior." className="sm:col-span-2">
+          <EscolherImagem valor={f.logoMenuUrl} nome="Logo do menu" onEscolher={(file) => escolherImagem("logoMenuUrl", file)} onRemover={() => set("logoMenuUrl", "")} />
+        </Campo>
+        <Campo rotulo="Logo do PDF" dica="Logo completa. Aparece no topo do PDF do orçamento; é reduzida automaticamente." className="sm:col-span-2">
           <EscolherImagem valor={f.logoUrl} nome="Logo" onEscolher={(file) => escolherImagem("logoUrl", file)} onRemover={() => set("logoUrl", "")} />
         </Campo>
         <Campo rotulo="Marca d'água (escudo)" dica="Símbolo da loja, bem clarinho no fundo de cada página do PDF. PNG com fundo transparente fica melhor." className="sm:col-span-2">
