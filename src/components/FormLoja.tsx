@@ -28,21 +28,31 @@ export default function FormLoja() {
   const [enviando, setEnviando] = useState(false);
   const set = (k: keyof typeof f, v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
 
-  // Reduz a foto para no máximo 500 px e guarda dentro da loja (PNG; JPG se ficar pesado).
+  // Corta a margem vazia (transparente ou branca), reduz para no máximo 500 px e guarda dentro da loja
+  // (PNG; JPG se ficar pesado).
   async function escolherImagem(campo: "logoUrl" | "marcaDaguaUrl", file?: File) {
     if (!file) return;
     try {
       const img = await createImageBitmap(file);
-      const k = Math.min(1, 500 / Math.max(img.width, img.height));
+      const k0 = Math.min(1, 1000 / Math.max(img.width, img.height));
+      const grande = document.createElement("canvas");
+      grande.width = Math.round(img.width * k0);
+      grande.height = Math.round(img.height * k0);
+      const g0 = grande.getContext("2d", { willReadFrequently: true })!;
+      g0.drawImage(img, 0, 0, grande.width, grande.height);
+      const { x, y, w, h } = limitesDoDesenho(g0.getImageData(0, 0, grande.width, grande.height));
+
+      const k = Math.min(1, 500 / Math.max(w, h));
       const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k);
-      c.height = Math.round(img.height * k);
+      c.width = Math.max(1, Math.round(w * k));
+      c.height = Math.max(1, Math.round(h * k));
       const g = c.getContext("2d")!;
-      let url = (g.drawImage(img, 0, 0, c.width, c.height), c.toDataURL("image/png"));
+      g.drawImage(grande, x, y, w, h, 0, 0, c.width, c.height);
+      let url = c.toDataURL("image/png");
       if (url.length > 240000) {
+        g.globalCompositeOperation = "destination-over";
         g.fillStyle = "#fff";
         g.fillRect(0, 0, c.width, c.height);
-        g.drawImage(img, 0, 0, c.width, c.height);
         url = c.toDataURL("image/jpeg", 0.85);
       }
       if (url.length > 240000) return setErro("Imagem muito pesada. Tente uma foto menor.");
@@ -121,4 +131,30 @@ function EscolherImagem({ valor, nome, onEscolher, onRemover }: { valor: string;
       {valor ? <button type="button" onClick={onRemover} className="text-sm text-red-600 underline">Remover</button> : null}
     </div>
   );
+}
+
+/** Retângulo que contém o desenho, com 2% de folga. Sem transparência usa "não é quase branco"; se não achar nada, a imagem toda. */
+function limitesDoDesenho(d: ImageData) {
+  const { data, width, height } = d;
+  let temAlpha = false;
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 255) { temAlpha = true; break; }
+  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const tem = temAlpha ? data[i + 3] > 16 : data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245;
+      if (!tem) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return { x: 0, y: 0, w: width, h: height };
+  const folga = Math.round(Math.max(x1 - x0, y1 - y0) * 0.02);
+  x0 = Math.max(0, x0 - folga);
+  y0 = Math.max(0, y0 - folga);
+  x1 = Math.min(width - 1, x1 + folga);
+  y1 = Math.min(height - 1, y1 + folga);
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
