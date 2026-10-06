@@ -23,7 +23,14 @@ export default function Sidebar({ aberta, onFechar }: { aberta: boolean; onFecha
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-gray-900 text-gray-400 transition-transform lg:translate-x-0 ${aberta ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="px-5 py-5 text-lg font-bold text-white">⚡ {loja?.nome ?? "Loja"}</div>
+        {loja?.logoUrl ? (
+          <div className="m-3 rounded-lg bg-white p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo da loja (data URL ou link externo) */}
+            <img src={loja.logoUrl} alt={loja.nome} className="mx-auto h-20 w-full object-contain" />
+          </div>
+        ) : (
+          <div className="px-5 py-5 text-lg font-bold text-white">⚡ {loja?.nome ?? "Loja"}</div>
+        )}
         <nav className="flex-1 space-y-1 px-3">
           {itens
             .filter((i) => !i.soDono || ehDono)

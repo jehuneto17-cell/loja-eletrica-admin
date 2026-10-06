@@ -36,7 +36,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <button type="button" aria-label="Abrir menu" onClick={() => setMenu(true)} className="rounded p-1 text-xl text-gray-700">
           ☰
         </button>
-        <span className="font-bold text-gray-900">⚡ {loja.nome}</span>
+        {loja.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- logo da loja (data URL ou link externo)
+          <img src={loja.logoUrl} alt={loja.nome} className="h-9 max-w-48 object-contain" />
+        ) : (
+          <span className="font-bold text-gray-900">⚡ {loja.nome}</span>
+        )}
       </header>
       <main className="mx-auto max-w-6xl p-4 sm:p-6">{children}</main>
     </div>
