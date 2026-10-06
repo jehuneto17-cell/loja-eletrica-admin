@@ -23,6 +23,7 @@ export default function ListaUsuarios() {
   const [f, setF] = useState({ nome: "", email: "", senha: "", perfil: "vendedor" as Perfil });
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [editando, setEditando] = useState<{ id: string; nome: string } | null>(null);
 
   async function criar(e: FormEvent) {
     e.preventDefault();
@@ -48,19 +49,52 @@ export default function ListaUsuarios() {
     }
   }
 
+  async function renomear(e: FormEvent) {
+    e.preventDefault();
+    if (!editando) return;
+    try {
+      await api(`/api/usuarios/${editando.id}`, { nome: editando.nome }, "PATCH");
+      toast("Nome alterado.");
+      setEditando(null);
+    } catch (err) {
+      toast((err as Error).message, true);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {erroLista ? <Aviso tipo="erro">{erroLista}</Aviso> : null}
       <ul className="divide-y divide-gray-300/60">
         {dados.map((u) => (
           <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            {editando?.id === u.id ? (
+              <form onSubmit={renomear} className="flex flex-wrap items-center gap-2">
+                <input
+                  value={editando.nome}
+                  onChange={(e) => setEditando({ id: u.id, nome: e.target.value })}
+                  maxLength={80}
+                  aria-label="Nome do usuário"
+                  className={inputCls + " w-64"}
+                  autoFocus
+                  required
+                />
+                <Botao type="submit">Salvar</Botao>
+                <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>Cancelar</Botao>
+              </form>
+            ) : (
             <span>
               <span className="font-semibold">{u.nome}</span> <Selo tom={u.perfil === "dono" ? "roxo" : "cinza"}>{u.perfil}</Selo>
               {!u.ativo ? <> <Selo tom="vermelho">bloqueado</Selo></> : null}
               <span className="block text-xs text-gray-600">{u.email}</span>
             </span>
-            {u.id !== user?.uid ? (
-              <Botao variante="secundario" onClick={() => alternar(u.id, !u.ativo)}>{u.ativo ? "Bloquear" : "Liberar"}</Botao>
+            )}
+            {editando?.id !== u.id ? (
+              <span className="flex gap-2">
+                <Botao variante="secundario" onClick={() => setEditando({ id: u.id, nome: u.nome })}>Editar nome</Botao>
+                {u.id !== user?.uid ? (
+                  <Botao variante="secundario" onClick={() => alternar(u.id, !u.ativo)}>{u.ativo ? "Bloquear" : "Liberar"}</Botao>
+                ) : null}
+              </span>
             ) : null}
           </li>
         ))}

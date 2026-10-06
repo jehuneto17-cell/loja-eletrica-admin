@@ -35,6 +35,20 @@ const ALIAS: Record<string, string> = {
 const chave = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]/g, "");
 
+/**
+ * Linhas do Excel (matriz: 1ª linha = cabeçalho) no mesmo formato que o CSV devolve.
+ * Célula numérica vira texto com vírgula ("8,9"), que é o que parseMoeda/parseQuantidade esperam.
+ */
+export function linhasDeMatriz(matriz: unknown[][]): Record<string, string>[] {
+  const texto = (c: unknown) =>
+    typeof c === "string" ? c : typeof c === "number" && Number.isFinite(c) ? String(Number(c.toFixed(6))).replace(".", ",") : "";
+  const [cab = [], ...resto] = matriz;
+  const nomes = cab.map((c, i) => texto(c).trim() || `coluna${i + 1}`);
+  return resto
+    .filter((r) => r.some((c) => texto(c).trim()))
+    .map((r) => Object.fromEntries(nomes.map((n, i) => [n, texto(r[i])])));
+}
+
 /** Converte as linhas do CSV (objetos por cabeçalho) em produtos validados ou erros por linha. */
 export function lerPlanilha(rows: Record<string, string>[]): { linhas: LinhaImportacao[]; faltando: string[] } {
   const colunas = new Map<string, string>(); // campo -> cabeçalho original

@@ -30,6 +30,16 @@ export async function criarUsuario(ctx: Ctx, b: Record<string, unknown>) {
   return { uid };
 }
 
+export async function renomearUsuario(ctx: Ctx, uid: string, valor: unknown) {
+  const nome = texto(valor, "Nome", 80);
+  const ref = adminDb().doc(`usuarios/${uid}`);
+  const u = (await ref.get()).data() as Doc<Usuario> | undefined;
+  if (!u || u.lojaId !== ctx.lojaId) throw new ApiError(404, "Usuário não encontrado");
+  await ref.update({ nome });
+  await adminAuth().updateUser(uid, { displayName: nome });
+  return { nome };
+}
+
 export async function definirAtivo(ctx: Ctx, uid: string, ativo: boolean) {
   if (uid === ctx.uid) throw new ApiError(400, "Você não pode desativar o próprio acesso");
   const ref = adminDb().doc(`usuarios/${uid}`);

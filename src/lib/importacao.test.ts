@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { lerPlanilha } from "./importacao.ts";
+import { lerPlanilha, linhasDeMatriz } from "./importacao.ts";
 
 test("cabeçalhos com acento e sinônimos; Excel em português", () => {
   const { linhas, faltando } = lerPlanilha([
@@ -37,4 +37,24 @@ test("erros por linha, sem derrubar as boas", () => {
   assert.match(linhas[6].erro!, /Preço/);
   assert.match(linhas[7].erro!, /Preço/);
   assert.deepEqual(linhas.map((l) => l.linha), [2, 3, 4, 5, 6, 7, 8, 9]);
+});
+
+test("Excel: matriz vira linhas; número vira texto com vírgula", () => {
+  const rows = linhasDeMatriz([
+    ["Código", "Produto", "Preço", "Saldo", null],
+    [221, "Cabo de cobre", 8.9, 1500, null],
+    [null, null, null, null, null], // linha vazia no meio some
+    ["DJ-20", "Disjuntor 20A", 25, 0.1 + 0.2, null],
+  ]);
+  assert.deepEqual(rows[0], { "Código": "221", Produto: "Cabo de cobre", "Preço": "8,9", Saldo: "1500", coluna5: "" });
+  assert.equal(rows.length, 2);
+  const { linhas } = lerPlanilha(rows);
+  assert.equal(linhas[0].dados?.precoVenda, 890);
+  assert.equal(linhas[0].dados?.estoqueInicial, 1500000);
+  assert.equal(linhas[1].dados?.estoqueInicial, 300);
+});
+
+test("Excel: planilha só com cabeçalho ou vazia", () => {
+  assert.deepEqual(linhasDeMatriz([["codigo", "nome", "preco"]]), []);
+  assert.deepEqual(linhasDeMatriz([]), []);
 });

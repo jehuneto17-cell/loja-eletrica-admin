@@ -1,5 +1,6 @@
 "use client";
 import Papa from "papaparse";
+import { readSheet } from "read-excel-file/browser";
 import Link from "next/link";
 import { useMemo, useState, type ChangeEvent } from "react";
 import Aviso from "@/components/ui/Aviso";
@@ -12,9 +13,10 @@ import { useToast } from "@/context/ToastContext";
 import { useProdutos } from "@/hooks/useProdutos";
 import { api } from "@/lib/apiClient";
 import { formatMoeda, formatQuantidade } from "@/lib/calc";
-import { lerPlanilha, type LinhaImportacao } from "@/lib/importacao";
+import { lerPlanilha, linhasDeMatriz, type LinhaImportacao } from "@/lib/importacao";
 
 const LOTE = 100; // igual ao limite do servidor
+const MAX_BYTES = 5_000_000;
 
 // CSV do Excel em português costuma vir em Windows-1252; tenta UTF-8 e cai para ele.
 function decodificar(buf: ArrayBuffer): string {
@@ -43,13 +45,22 @@ export default function ImportarProdutos() {
     setResultado("");
     setErro("");
     if (!arq) return;
-    if (/\.xlsx?$/i.test(arq.name)) {
-      return setErro("Arquivo Excel não é lido direto. No Excel: Arquivo > Salvar como > CSV, e envie o CSV.");
+    if (/\.xls$/i.test(arq.name)) {
+      return setErro("Excel antigo (.xls) não é lido. No Excel: Arquivo > Salvar como > Pasta de Trabalho do Excel (.xlsx) ou CSV.");
     }
-    const texto = decodificar(await arq.arrayBuffer());
-    const r = Papa.parse<Record<string, string>>(texto, { header: true, skipEmptyLines: true });
-    if (!r.data.length) return setErro("A planilha está vazia.");
-    const { linhas: l, faltando } = lerPlanilha(r.data);
+    if (arq.size > MAX_BYTES) return setErro("Arquivo muito grande (limite de 5 MB). Divida a planilha em partes.");
+    let dados: Record<string, string>[];
+    try {
+      if (/\.xlsx$/i.test(arq.name)) {
+        dados = linhasDeMatriz(await readSheet(arq)); // primeira aba, primeira linha = cabeçalho
+      } else {
+        dados = Papa.parse<Record<string, string>>(decodificar(await arq.arrayBuffer()), { header: true, skipEmptyLines: true }).data;
+      }
+    } catch {
+      return setErro("Não consegui ler esse arquivo. Confira se é um .xlsx ou CSV válido.");
+    }
+    if (!dados.length) return setErro("A planilha está vazia.");
+    const { linhas: l, faltando } = lerPlanilha(dados);
     if (faltando.length) return setErro(`Faltam colunas: ${faltando.join(", ")}. Veja o modelo abaixo.`);
     setLinhas(l);
   }
@@ -84,14 +95,14 @@ export default function ImportarProdutos() {
     <>
       <CabecalhoPagina
         titulo="Importar produtos"
-        subtitulo="Envie um CSV, confira e só então salve."
+        subtitulo="Envie uma planilha Excel (.xlsx) ou CSV, confira e só então salve."
         acoes={<Link href="/produtos" className="inline-flex min-h-10 items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-100">Voltar</Link>}
       />
       <div className="space-y-4">
         <Cartao titulo="1. Escolha o arquivo">
-          <input type="file" accept=".csv,text/csv" onChange={escolher} aria-label="Arquivo CSV" className="block w-full text-sm" />
+          <input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx ou CSV)" className="block w-full text-sm" />
           <p className="mt-3 text-sm text-gray-600">
-            Colunas: <b>codigo</b>, <b>nome</b>, <b>preco</b> (obrigatórias) e categoria, marca, unidade (un, m, rolo, cx, kg),
+            Primeira aba, primeira linha com os nomes das colunas. Colunas: <b>codigo</b>, <b>nome</b>, <b>preco</b> (obrigatórias) e categoria, marca, unidade (un, m, rolo, cx, kg),
             estoque_minimo, estoque (saldo inicial). Código que já existe é atualizado sem mexer no saldo.
           </p>
           <pre className="mt-2 overflow-x-auto rounded bg-gray-200 p-3 text-xs">{"codigo;nome;categoria;unidade;preco;estoque_minimo;estoque\nCAB-25;Cabo 2,5mm;Cabos;m;8,90;50;300\nDJ-20;Disjuntor 20A;Disjuntores;un;25,00;5;40"}</pre>
