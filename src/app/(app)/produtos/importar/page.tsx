@@ -35,6 +35,7 @@ export default function ImportarProdutos() {
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState("");
+  const [chave, setChave] = useState(0); // troca para limpar o campo de arquivo
 
   const codigosExistentes = useMemo(() => new Set(existentes.map((p) => p.codigo)), [existentes]);
   const validas = linhas.filter((l) => l.dados);
@@ -63,6 +64,13 @@ export default function ImportarProdutos() {
     const { linhas: l, faltando } = lerPlanilha(dados);
     if (faltando.length) return setErro(`Faltam colunas: ${faltando.join(", ")}. Veja o modelo abaixo.`);
     setLinhas(l);
+  }
+
+  function cancelar() {
+    setLinhas([]);
+    setErro("");
+    setResultado("");
+    setChave((c) => c + 1);
   }
 
   async function importar() {
@@ -100,7 +108,7 @@ export default function ImportarProdutos() {
       />
       <div className="space-y-4">
         <Cartao titulo="1. Escolha o arquivo">
-          <input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx ou CSV)" className="block w-full cursor-pointer rounded-md border-2 border-dashed border-gray-300 bg-gray-100 p-4 text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-5 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:border-primary hover:file:bg-primary/90" />
+          <input key={chave} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx ou CSV)" className="block w-full cursor-pointer rounded-md border-2 border-dashed border-gray-300 bg-gray-100 p-4 text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-5 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:border-primary hover:file:bg-primary/90" />
           <p className="mt-3 text-sm text-gray-600">
             Primeira aba, primeira linha com os nomes das colunas. Colunas: <b>codigo</b>, <b>nome</b>, <b>preco</b> (obrigatórias) e categoria, marca, unidade (un, m, rolo, cx, kg),
             estoque_minimo, estoque (saldo inicial). Código que já existe é atualizado sem mexer no saldo.
@@ -114,7 +122,12 @@ export default function ImportarProdutos() {
         {linhas.length ? (
           <Cartao
             titulo={`2. Confira (${validas.length} válidas, ${linhas.length - validas.length} com problema)`}
-            acao={<Botao onClick={importar} carregando={enviando} disabled={!validas.length}>Importar {validas.length}</Botao>}
+            acao={
+              <div className="flex gap-2">
+                <Botao variante="secundario" onClick={cancelar} disabled={enviando}>Cancelar</Botao>
+                <Botao onClick={importar} carregando={enviando} disabled={!validas.length}>Importar {validas.length}</Botao>
+              </div>
+            }
           >
             <div className="max-h-[480px] overflow-auto">
               <table className="w-full min-w-[560px] text-left text-sm">
