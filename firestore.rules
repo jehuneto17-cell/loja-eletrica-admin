@@ -39,7 +39,13 @@ service cloud.firestore {
         && request.resource.data.permiteVendaSemEstoque is bool
         && (!('logoUrl' in request.resource.data)
             || request.resource.data.logoUrl == ''
-            || request.resource.data.logoUrl.matches('^https://(res[.]cloudinary[.]com|firebasestorage[.]googleapis[.]com)/.{1,400}$'));
+            || request.resource.data.logoUrl.matches('^https://(res[.]cloudinary[.]com|firebasestorage[.]googleapis[.]com)/.{1,400}$')
+            || (request.resource.data.logoUrl.matches('^data:image/(png|jpeg);base64,.+$')
+                && request.resource.data.logoUrl.size() <= 250000))
+        && (!('marcaDaguaUrl' in request.resource.data)
+            || request.resource.data.marcaDaguaUrl == ''
+            || (request.resource.data.marcaDaguaUrl.matches('^data:image/(png|jpeg);base64,.+$')
+                && request.resource.data.marcaDaguaUrl.size() <= 250000));
     }
 
     function clienteValido(c) {

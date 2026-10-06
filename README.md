@@ -38,7 +38,7 @@ npx tsc --noEmit; npx eslint src; npx next build
    **Nunca** cadastrar `NEXT_PUBLIC_USE_EMULATOR`, `FIRESTORE_EMULATOR_HOST` ou `FIREBASE_AUTH_EMULATOR_HOST` (o login passaria a aceitar token falso).
 3. `firebase deploy --only firestore:rules,firestore:indexes` (projeto novo não tem nada publicado).
 4. Criar a loja e o dono: `FIREBASE_SERVICE_ACCOUNT_JSON=… CRIAR_LOJA_SENHA=… node scripts/criar-loja.mjs --loja "…" --nome "…" --email …`. Não existe cadastro público; os vendedores o dono cadastra em Configurações.
-5. Logo da loja: link do **Cloudinary** (`https://res.cloudinary.com/…`) ou do Firebase Storage, PNG/JPG até 500 KB. Outros endereços são recusados de propósito (o servidor busca esse arquivo ao gerar o PDF).
+5. Logo da loja: em Configurações, escolha a foto (PNG/JPG). Ela é reduzida no navegador (até 500 px) e guardada na própria loja; o PDF usa direto, sem buscar nada na rede. Links antigos do Cloudinary/Firebase Storage continuam valendo. Também em Configurações, a **marca d'água** (escudo ou símbolo) vira uma imagem bem clara no fundo de cada página do PDF (PNG/JPG até 250 KB, só foto enviada, sem link).
 
 ## Produção (já publicada)
 

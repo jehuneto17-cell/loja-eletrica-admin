@@ -42,6 +42,21 @@ describe("loja", () => {
     }
   });
 
+  test("logo por foto: data URL png/jpeg até 250 KB", async () => {
+    await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { logoUrl: "data:image/png;base64," + "A".repeat(100000) }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { logoUrl: "data:image/png;base64," + "A".repeat(250000) }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { logoUrl: "data:text/html;base64,AAAA" }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { logoUrl: "data:image/svg+xml;base64,AAAA" }));
+  });
+
+  test("marca d'água: só data URL png/jpeg até 250 KB", async () => {
+    await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "data:image/png;base64," + "A".repeat(100000) }));
+    await assertSucceeds(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "" }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "data:image/png;base64," + "A".repeat(250000) }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "https://res.cloudinary.com/x/y.png" }));
+    await assertFails(updateDoc(doc(dono(), "lojas/L1"), { marcaDaguaUrl: "data:image/svg+xml;base64,AAAA" }));
+  });
+
   test("tipos e faixas dos campos de que o servidor depende", async () => {
     await assertFails(updateDoc(doc(dono(), "lojas/L1"), { validadePadraoDias: 0 }));
     await assertFails(updateDoc(doc(dono(), "lojas/L1"), { validadePadraoDias: 400 }));

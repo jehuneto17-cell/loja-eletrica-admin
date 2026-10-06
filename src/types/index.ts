@@ -15,6 +15,7 @@ export interface Loja {
   telefone?: string;
   endereco?: string;
   logoUrl?: string;
+  marcaDaguaUrl?: string; // escudo/símbolo em transparência no fundo do PDF (data URL png/jpeg)
   validadePadraoDias: number;
   textoRodapePdf?: string;
   descontoMaxVendedorPct: number; // acima disso exige dono (regra 10)

@@ -18,6 +18,7 @@ export default function FormLoja() {
     telefone: loja.telefone ?? "",
     endereco: loja.endereco ?? "",
     logoUrl: loja.logoUrl ?? "",
+    marcaDaguaUrl: loja.marcaDaguaUrl ?? "",
     textoRodapePdf: loja.textoRodapePdf ?? "",
     validade: String(loja.validadePadraoDias),
     descMax: String(loja.descontoMaxVendedorPct),
@@ -27,6 +28,31 @@ export default function FormLoja() {
   const [enviando, setEnviando] = useState(false);
   const set = (k: keyof typeof f, v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
 
+  // Reduz a foto para no máximo 500 px e guarda dentro da loja (PNG; JPG se ficar pesado).
+  async function escolherImagem(campo: "logoUrl" | "marcaDaguaUrl", file?: File) {
+    if (!file) return;
+    try {
+      const img = await createImageBitmap(file);
+      const k = Math.min(1, 500 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      const g = c.getContext("2d")!;
+      let url = (g.drawImage(img, 0, 0, c.width, c.height), c.toDataURL("image/png"));
+      if (url.length > 240000) {
+        g.fillStyle = "#fff";
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        url = c.toDataURL("image/jpeg", 0.85);
+      }
+      if (url.length > 240000) return setErro("Imagem muito pesada. Tente uma foto menor.");
+      setErro("");
+      set(campo, url);
+    } catch {
+      setErro("Não consegui ler essa imagem. Use PNG ou JPG.");
+    }
+  }
+
   async function salvar(e: FormEvent) {
     e.preventDefault();
     const validade = Number(f.validade);
@@ -34,9 +60,6 @@ export default function FormLoja() {
     if (!f.nome.trim()) return setErro("Informe o nome da loja.");
     if (!Number.isInteger(validade) || validade < 1 || validade > 365) return setErro("Validade padrão: de 1 a 365 dias.");
     if (!Number.isFinite(descMax) || descMax < 0 || descMax > 100) return setErro("Limite de desconto: de 0 a 100%.");
-    if (f.logoUrl && !/^https:\/\/(res\.cloudinary\.com|firebasestorage\.googleapis\.com)\//.test(f.logoUrl.trim())) {
-      return setErro("O logo precisa estar no Cloudinary ou no Firebase Storage (link https://res.cloudinary.com/… ou https://firebasestorage.googleapis.com/…).");
-    }
     setErro("");
     setEnviando(true);
     try {
@@ -46,6 +69,7 @@ export default function FormLoja() {
         telefone: f.telefone.trim(),
         endereco: f.endereco.trim(),
         logoUrl: f.logoUrl.trim(),
+        marcaDaguaUrl: f.marcaDaguaUrl,
         textoRodapePdf: f.textoRodapePdf.trim(),
         validadePadraoDias: validade,
         descontoMaxVendedorPct: descMax,
@@ -67,7 +91,12 @@ export default function FormLoja() {
         <Campo rotulo="CNPJ"><input value={f.cnpj} onChange={(e) => set("cnpj", e.target.value)} maxLength={20} className={inputCls} /></Campo>
         <Campo rotulo="Telefone"><input value={f.telefone} onChange={(e) => set("telefone", e.target.value)} maxLength={30} className={inputCls} /></Campo>
         <Campo rotulo="Endereço"><input value={f.endereco} onChange={(e) => set("endereco", e.target.value)} maxLength={200} className={inputCls} /></Campo>
-        <Campo rotulo="Link do logo (PNG ou JPG, até 500 KB)" dica="Aparece no PDF do orçamento. Aceita links do Cloudinary e do Firebase Storage." className="sm:col-span-2"><input value={f.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} className={inputCls} placeholder="https://res.cloudinary.com/…/logo.png" /></Campo>
+        <Campo rotulo="Logo da loja" dica="Logo completa. Aparece no topo do PDF do orçamento; é reduzida automaticamente." className="sm:col-span-2">
+          <EscolherImagem valor={f.logoUrl} nome="Logo" onEscolher={(file) => escolherImagem("logoUrl", file)} onRemover={() => set("logoUrl", "")} />
+        </Campo>
+        <Campo rotulo="Marca d'água (escudo)" dica="Símbolo da loja, bem clarinho no fundo de cada página do PDF. PNG com fundo transparente fica melhor." className="sm:col-span-2">
+          <EscolherImagem valor={f.marcaDaguaUrl} nome="Marca d'água" onEscolher={(file) => escolherImagem("marcaDaguaUrl", file)} onRemover={() => set("marcaDaguaUrl", "")} />
+        </Campo>
         <Campo rotulo="Texto do rodapé do PDF" className="sm:col-span-2"><input value={f.textoRodapePdf} onChange={(e) => set("textoRodapePdf", e.target.value)} maxLength={200} className={inputCls} placeholder="Ex.: Preços sujeitos a alteração sem aviso." /></Campo>
         <Campo rotulo="Validade padrão do orçamento (dias)"><input inputMode="numeric" value={f.validade} onChange={(e) => set("validade", e.target.value)} className={inputCls} /></Campo>
         <Campo rotulo="Desconto máximo do vendedor (%)" dica="Acima disso só o dono salva o orçamento."><input inputMode="decimal" value={f.descMax} onChange={(e) => set("descMax", e.target.value)} className={inputCls} /></Campo>
@@ -78,5 +107,18 @@ export default function FormLoja() {
       </label>
       <div className="flex justify-end"><Botao type="submit" carregando={enviando}>Salvar</Botao></div>
     </form>
+  );
+}
+
+function EscolherImagem({ valor, nome, onEscolher, onRemover }: { valor: string; nome: string; onEscolher: (f?: File) => void; onRemover: () => void }) {
+  return (
+    <div className="flex items-center gap-3">
+      {valor ? (
+        // eslint-disable-next-line @next/next/no-img-element -- pré-visualização de data URL
+        <img src={valor} alt={`${nome} atual`} className="h-16 max-w-40 rounded border border-gray-200 object-contain" />
+      ) : null}
+      <input type="file" accept="image/png,image/jpeg" onChange={(e) => onEscolher(e.target.files?.[0])} className="text-sm" />
+      {valor ? <button type="button" onClick={onRemover} className="text-sm text-red-600 underline">Remover</button> : null}
+    </div>
   );
 }

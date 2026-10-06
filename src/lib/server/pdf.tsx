@@ -10,6 +10,7 @@ import { linkRevogado } from "./pdfLink.ts";
 const s = StyleSheet.create({
   page: { padding: 36, fontSize: 10, fontFamily: "Helvetica", color: "#212b36" },
   topo: { flexDirection: "row", justifyContent: "space-between", marginBottom: 18 },
+  marca: { position: "absolute", top: 230, left: 117, width: 360, height: 360, objectFit: "contain", opacity: 0.07 },
   logo: { width: 64, height: 64, objectFit: "contain", marginRight: 12 },
   loja: { flexDirection: "row", alignItems: "center" },
   nomeLoja: { fontSize: 14, fontFamily: "Helvetica-Bold" },
@@ -44,6 +45,13 @@ type LogoPdf = { data: Buffer; format: "png" | "jpg" };
 export async function carregarLogo(url: string | undefined): Promise<LogoPdf | undefined> {
   if (!url) return undefined;
   try {
+    // logo enviado por foto: vem embutido no próprio documento, sem buscar nada na rede
+    const m = /^data:image\/(png|jpeg);base64,(.+)$/.exec(url);
+    if (m) {
+      const buf = Buffer.from(m[2], "base64");
+      const ok = m[1] === "png" ? buf[0] === 0x89 : buf[0] === 0xff;
+      return ok && buf.length <= LOGO_MAX_BYTES ? { data: buf, format: m[1] === "png" ? "png" : "jpg" } : undefined;
+    }
     const u = new URL(url);
     if (u.protocol !== "https:" || u.username || u.password || !HOSTS_LOGO.includes(u.hostname)) return undefined;
     const r = await fetch(u, { signal: AbortSignal.timeout(3000), redirect: "error" });
@@ -60,17 +68,21 @@ export async function carregarLogo(url: string | undefined): Promise<LogoPdf | u
 interface Dados {
   loja: Doc<Loja>;
   logo?: LogoPdf;
+  marca?: LogoPdf;
   orc: Doc<Orcamento>;
   cliente?: Doc<Cliente>;
   itens: ItemDocumento[];
 }
 
 function Orcamento({ d }: { d: Dados }) {
-  const { loja, logo, orc, cliente, itens } = d;
+  const { loja, logo, marca, orc, cliente, itens } = d;
   const status = statusDoOrcamento(orc);
   return (
     <Document title={orc.numero} author={loja.nome}>
       <Page size="A4" style={s.page}>
+        {/* marca d'água: fixa em todas as páginas, atrás do conteúdo */}
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do react-pdf não tem alt */}
+        {marca ? <Image fixed src={marca} style={s.marca} /> : null}
         <View style={s.topo}>
           <View style={s.loja}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do react-pdf não tem alt */}
@@ -161,6 +173,7 @@ export async function gerarPdf(orcamentoId: string, exp?: number): Promise<{ buf
   const d: Dados = {
     loja,
     logo: await carregarLogo(loja.logoUrl),
+    marca: await carregarLogo(loja.marcaDaguaUrl),
     orc,
     cliente: clienteSnap.data() as Doc<Cliente> | undefined,
     itens: itensSnap.docs.map((i) => i.data() as ItemDocumento),
