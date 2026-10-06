@@ -100,7 +100,7 @@ export default function ImportarProdutos() {
       />
       <div className="space-y-4">
         <Cartao titulo="1. Escolha o arquivo">
-          <input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx ou CSV)" className="block w-full text-sm" />
+          <input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx ou CSV)" className="block w-full cursor-pointer rounded-md border-2 border-dashed border-gray-300 bg-gray-100 p-4 text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-5 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:border-primary hover:file:bg-primary/90" />
           <p className="mt-3 text-sm text-gray-600">
             Primeira aba, primeira linha com os nomes das colunas. Colunas: <b>codigo</b>, <b>nome</b>, <b>preco</b> (obrigatórias) e categoria, marca, unidade (un, m, rolo, cx, kg),
             estoque_minimo, estoque (saldo inicial). Código que já existe é atualizado sem mexer no saldo.
