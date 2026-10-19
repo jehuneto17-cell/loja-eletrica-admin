@@ -46,19 +46,20 @@ export default function ImportarProdutos() {
     setResultado("");
     setErro("");
     if (!arq) return;
-    if (/\.xls$/i.test(arq.name)) {
-      return setErro("Excel antigo (.xls) não é lido. No Excel: Arquivo > Salvar como > Pasta de Trabalho do Excel (.xlsx) ou CSV.");
-    }
     if (arq.size > MAX_BYTES) return setErro("Arquivo muito grande (limite de 5 MB). Divida a planilha em partes.");
     let dados: Record<string, string>[];
     try {
       if (/\.xlsx$/i.test(arq.name)) {
         dados = linhasDeMatriz(await readSheet(arq)); // primeira aba, primeira linha = cabeçalho
+      } else if (/\.xls$/i.test(arq.name)) {
+        const XLSX = await import("xlsx"); // só baixa a biblioteca (pesada) quando o arquivo é .xls
+        const aba = XLSX.read(await arq.arrayBuffer()).Sheets;
+        dados = linhasDeMatriz(XLSX.utils.sheet_to_json<unknown[]>(Object.values(aba)[0], { header: 1, defval: "" }));
       } else {
         dados = Papa.parse<Record<string, string>>(decodificar(await arq.arrayBuffer()), { header: true, skipEmptyLines: true }).data;
       }
     } catch {
-      return setErro("Não consegui ler esse arquivo. Confira se é um .xlsx ou CSV válido.");
+      return setErro("Não consegui ler esse arquivo. Confira se é um .xlsx, .xls ou CSV válido.");
     }
     if (!dados.length) return setErro("A planilha está vazia.");
     const { linhas: l, faltando } = lerPlanilha(dados);
@@ -103,12 +104,12 @@ export default function ImportarProdutos() {
     <>
       <CabecalhoPagina
         titulo="Importar produtos"
-        subtitulo="Envie uma planilha Excel (.xlsx) ou CSV, confira e só então salve."
+        subtitulo="Envie uma planilha Excel (.xlsx ou .xls) ou CSV, confira e só então salve."
         acoes={<Link href="/produtos" className="inline-flex min-h-10 items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-100">Voltar</Link>}
       />
       <div className="space-y-4">
         <Cartao titulo="1. Escolha o arquivo">
-          <input key={chave} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx ou CSV)" className="block w-full cursor-pointer rounded-md border-2 border-dashed border-gray-300 bg-gray-100 p-4 text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-5 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:border-primary hover:file:bg-primary/90" />
+          <input key={chave} type="file" accept=".xlsx,.xls,.csv,application/vnd.ms-excel,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={escolher} aria-label="Arquivo da planilha (.xlsx, .xls ou CSV)" className="block w-full cursor-pointer rounded-md border-2 border-dashed border-gray-300 bg-gray-100 p-4 text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-5 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:border-primary hover:file:bg-primary/90" />
           <p className="mt-3 text-sm text-gray-600">
             Primeira aba, primeira linha com os nomes das colunas. Colunas: <b>codigo</b>, <b>nome</b>, <b>preco</b> (obrigatórias) e categoria, marca, unidade (un, m, rolo, cx, kg),
             estoque_minimo, estoque (saldo inicial). Código que já existe é atualizado sem mexer no saldo.
